@@ -22,21 +22,25 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # 3. Build the Application
+      # 3. Build the application
       - name: Build with Maven
         run: mvn clean package -DskipTests
 
-      # 4. Copy JAR file to EC2
-      - name: Copy JAR to EC2
+      # 4. Verify generated WAR file
+      - name: Verify Build Output
+        run: ls -la target/
+
+      # 5. Copy WAR file to EC2
+      - name: Copy WAR to EC2
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
-          source: "target/*.jar"
+          source: "target/*.war"
           target: "/home/ec2-user/app"
 
-      # 5. SSH into EC2 and Restart Application
+      # 6. Restart application on EC2
       - name: Restart Application on EC2
         uses: appleboy/ssh-action@master
         with:
@@ -44,9 +48,9 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            # Stop existing Java process
+            # Stop existing Spring Boot application
             sudo pkill -f java || true
 
-            # Start the new application
-            nohup java -jar /home/ec2-user/app/target/*.jar \
+            # Start new application
+            nohup java -jar /home/ec2-user/app/target/*.war \
               > /home/ec2-user/app/app.log 2>&1 &
